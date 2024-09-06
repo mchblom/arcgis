@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ArcGIS Pie Chart with Map Extent</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <canvas id="myPieChart" width="400" height="400"></canvas>
+
+  <script>
+    // Initialize the Chart.js pie chart
+    var ctx = document.getElementById('myPieChart').getContext('2d');
+    var myPieChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: [],  // Labels populated dynamically
+        datasets: [{
+          label: 'TR Classification',
+          data: [],   // Data will be fetched from ArcGIS REST API
+          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
+
+    // Function to fetch data from ArcGIS REST API based on map extent
+    function fetchArcGISData(extent) {
+      const layerUrl = 'https://services.arcgis.com/VXxNhxV4k4tfsXuX/arcgis/rest/services/Plan_252_Land_Use_Mobility_2023/FeatureServer/0';
+      
+      // Construct the query URL for the current extent
+      const queryUrl = `${layerUrl}/query?where=1=1&geometry=${extent.xmin},${extent.ymin},${extent.xmax},${extent.ymax}&geometryType=esriGeometryEnvelope&spatialRel=esriSpatialRelIntersects&outFields=TR_Classification1&f=json`;
+
+      // Fetch data from the service
+      fetch(queryUrl)
+        .then(response => response.json())
+        .then(data => {
+          const classifications = {};
+
+          // Process the features and classify the data
+          data.features.forEach(feature => {
+            const classification = feature.attributes.TR_Classification1;
+            if (!classifications[classification]) {
+              classifications[classification] = 0;
+            }
+            classifications[classification]++;
+          });
+
+          // Update the chart with new data
+          myPieChart.data.labels = Object.keys(classifications);
+          myPieChart.data.datasets[0].data = Object.values(classifications);
+          myPieChart.update();
+        })
+        .catch(err => console.error(err));
+    }
+
+    // Example extent to fetch data (will be dynamic based on your map's extent)
+    const exampleExtent = {
+      xmin: -130,
+      ymin: 20,
+      xmax: -60,
+      ymax: 50
+    };
+
+    // Fetch and update the chart for the given extent
+    fetchArcGISData(exampleExtent);
+
+  </script>
+</body>
+</html>
